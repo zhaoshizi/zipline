@@ -195,6 +195,7 @@ class TradingAlgorithm(object):
     create_event_context : callable[BarData -> context manager], optional
         A function used to create a context mananger that wraps the
         execution of all events that are scheduled for a bar.
+        用于创建上下文管理器的函数，该上下文管理器用于包装一个k线上要执行的事件
         This function will be passed the data for the bar and should
         return the actual context manager that will be entered.
     history_container_class : type, optional
@@ -233,10 +234,13 @@ class TradingAlgorithm(object):
                  get_pipeline_loader=None,
                  create_event_context=None,
                  **initialize_kwargs):
-        # List of trading controls to be used to validate orders.
+
+        # List of trading controls to be used to validate orders. 
+        # 用于验证订单的交易控制项列表
         self.trading_controls = []
 
         # List of account controls to be checked on each bar.
+        # 用于在每个bar上检查的账户控制
         self.account_controls = []
 
         self._recorded_vars = {}
@@ -249,6 +253,7 @@ class TradingAlgorithm(object):
         # We support passing a data_portal in `run`, but we need an asset
         # finder earlier than that to look up assets for things like
         # set_benchmark.
+        # run函数里支持传入数据接口，在此之前，还需要asset finder来查询资产
         self.data_portal = data_portal
 
         if self.data_portal is None:
@@ -261,6 +266,8 @@ class TradingAlgorithm(object):
         else:
             # Raise an error if we were passed two different asset finders.
             # There's no world where that's a good idea.
+            # 不能传入两个不同的asset finder，传入的asset finder和
+            # data_portal里的asset_finder要一致
             if asset_finder is not None \
                and asset_finder is not data_portal.asset_finder:
                 raise ValueError(
@@ -278,6 +285,9 @@ class TradingAlgorithm(object):
         # attribute. If the user passed trading_calendar explicitly, make sure
         # it matches their sim_params. Otherwise, just use what's in their
         # sim_params.
+        # 需要sim_params参数和可选的trading_calendar参数，但sim_params中也包含
+        # trading_calendar参数。如果用户传入了trading_calendar参数，要保证和sim_params参数
+        # 中的trading_calendar参数一致，否则，只使用sim_params参数中的trading_calendar
         self.sim_params = sim_params
         if trading_calendar is None:
             self.trading_calendar = sim_params.trading_calendar
@@ -294,6 +304,7 @@ class TradingAlgorithm(object):
 
         self.metrics_tracker = None
         self._last_sync_time = pd.NaT
+        # 设置度量指标
         self._metrics_set = metrics_set
         if self._metrics_set is None:
             self._metrics_set = load_metrics_set('default')
@@ -304,13 +315,16 @@ class TradingAlgorithm(object):
 
         # Create an already-expired cache so that we compute the first time
         # data is requested.
+        # 创建缓存
         self._pipeline_cache = ExpiringCache(
             cleanup=clear_dataframe_indexer_caches
         )
 
+        # 记账薄
         if blotter is not None:
             self.blotter = blotter
         else:
+            # 订单撤消策略
             cancel_policy = cancel_policy or NeverCancel()
             blotter_class = blotter_class or SimulationBlotter
             self.blotter = blotter_class(cancel_policy=cancel_policy)
@@ -321,6 +335,7 @@ class TradingAlgorithm(object):
 
         # If string is passed in, execute and get reference to
         # functions.
+        # 如果传进的是语句，执行，并得到函数功能的索引
         self.algoscript = script
 
         self._initialize = None
@@ -337,6 +352,7 @@ class TradingAlgorithm(object):
             pass
 
         if self.algoscript is not None:
+            # 如果algoscript存在的话，下面的几个参数并不需要
             unexpected_api_methods = set()
             if initialize is not None:
                 unexpected_api_methods.add('initialize')
@@ -357,6 +373,7 @@ class TradingAlgorithm(object):
 
             if algo_filename is None:
                 algo_filename = '<string>'
+            # 对算法的文本进行编译
             code = compile(self.algoscript, algo_filename, 'exec')
             exec_(code, self.namespace)
 
@@ -379,6 +396,7 @@ class TradingAlgorithm(object):
                 zipline.utils.events.Always(),
                 # We pass handle_data.__func__ to get the unbound method.
                 # We will explicitly pass the algorithm to bind it again.
+                # self.handle_data是个函数
                 self.handle_data.__func__,
             ),
             prepend=True,
@@ -396,11 +414,13 @@ class TradingAlgorithm(object):
 
         # A dictionary of capital changes, keyed by timestamp, indicating the
         # target/delta of the capital changes, along with values
+        # 以时间戳为key 的字典，记录资本变化
         self.capital_changes = capital_changes or {}
 
         # A dictionary of the actual capital change deltas, keyed by timestamp
         self.capital_change_deltas = {}
 
+        # 限制条件先初始化为无限制条件
         self.restrictions = NoRestrictions()
 
         self._backwards_compat_universe = None
@@ -408,7 +428,7 @@ class TradingAlgorithm(object):
     def init_engine(self, get_loader):
         """
         Construct and store a PipelineEngine from loader.
-
+        从Pipelineloader中创建并保存一个PipelineEngine
         If get_loader is None, constructs an ExplodingPipelineEngine
         """
         if get_loader is not None:
