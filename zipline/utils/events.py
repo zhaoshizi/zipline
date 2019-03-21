@@ -63,15 +63,18 @@ MAX_WEEK_RANGE = 5
 def naive_to_utc(ts):
     """
     Converts a UTC tz-naive timestamp to a tz-aware timestamp.
+    将世界标准时间的时间戳转换为已知时区的时间戳
     """
     # Drop the nanoseconds field. warn=False suppresses the warning
     # that we are losing the nanoseconds; however, this is intended.
+    # 故意舍得纳秒，设置warn=False 不提示警告
     return pd.Timestamp(ts.to_pydatetime(warn=False), tz='UTC')
 
 
 def ensure_utc(time, tz='UTC'):
     """
     Normalize a time. If the time is tz-naive, assume it is UTC.
+    时间标准化
     """
     if not time.tzinfo:
         time = time.replace(tzinfo=pytz.timezone(tz))
@@ -79,6 +82,9 @@ def ensure_utc(time, tz='UTC'):
 
 
 def _out_of_range_error(a, b=None, var='offset'):
+    """
+    超出范围报错
+    """
     start = 0
     if b is None:
         end = a - 1
@@ -95,6 +101,9 @@ def _out_of_range_error(a, b=None, var='offset'):
 
 
 def _td_check(td):
+    """
+    1分钟到12小时判断
+    """
     seconds = td.total_seconds()
 
     # 43200 seconds = 12 hours
@@ -108,6 +117,7 @@ def _td_check(td):
 def _build_offset(offset, kwargs, default):
     """
     Builds the offset argument for event rules.
+    为事件规则设置偏移量，小时或分钟数
     """
     if offset is None:
         if not kwargs:
@@ -125,6 +135,7 @@ def _build_offset(offset, kwargs, default):
 def _build_date(date, kwargs):
     """
     Builds the date argument for event rules.
+    为事件规则设置日期值
     """
     if date is None:
         if not kwargs:
@@ -141,7 +152,10 @@ def _build_date(date, kwargs):
 def _build_time(time, kwargs):
     """
     Builds the time argument for event rules.
+    为事件规则设置时间
     """
+    # pop(key[,default])
+    # default: 如果没有 key，返回 default 值
     tz = kwargs.pop('tz', 'UTC')
     if time:
         if kwargs:
@@ -158,8 +172,9 @@ def _build_time(time, kwargs):
 def lossless_float_to_int(funcname, func, argname, arg):
     """
     A preprocessor that coerces integral floats to ints.
-
+    把一个表示整数的浮点数无损的转为整数
     Receipt of non-integral floats raises a TypeError.
+    不是整数形式的浮点数提示类型 
     """
     if not isinstance(arg, float):
         return arg
@@ -181,14 +196,19 @@ def lossless_float_to_int(funcname, func, argname, arg):
 
 class EventManager(object):
     """Manages a list of Event objects.
+    管理一系列事件对象
     This manages the logic for checking the rules and dispatching to the
     handle_data function of the Events.
-
+    负责管理检查规则、调度handle_adta函数
     Parameters
     ----------
     create_context : (BarData) -> context manager, optional
         An optional callback to produce a context manager to wrap the calls
         to handle_data. This will be passed the current BarData.
+    参数为：
+    create_context : (BarData) -> context manager, optional
+    可选的回调来产生一个 context manager 来装饰对handle_data的调用
+    必须送当时的bar数据
     """
     def __init__(self, create_context=None):
         self._events = []
